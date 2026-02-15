@@ -83,13 +83,45 @@ export interface RoundState {
   replaysUsed: number;
 }
 
-/** Default difficulty settings */
+/** Default difficulty settings (matches Level 1 / Beginner) */
 export const DEFAULT_DIFFICULTY: DifficultyConfig = {
-  noteCount: 4,
+  noteCount: 3,
   scale: 'major',
   key: 'C',
   tempo: 100,
-  maxInterval: 7,
+  maxInterval: 3,
   rhythmMode: false,
   octave: 4,
 };
+
+/** Record of a completed round, persisted in localStorage */
+export interface RoundRecord {
+  timestamp: number;
+  score: number;
+  noteCount: number;
+  scale: string;
+  key: string;
+  replaysUsed: number;
+  perfect: boolean;
+  bonusPoints: number;
+}
+
+/** XP breakdown for a single round */
+export interface XPBreakdown {
+  baseXP: number;
+  noReplayBonus: number;
+  perfectBonus: number;
+  streakMultiplier: number;
+  difficultyMultiplier: number;
+  totalXP: number;
+}
+
+/** Cumulative stats persisted in localStorage */
+export interface SessionStats {
+  currentStreak: number;
+  bestStreak: number;
+  totalRounds: number;
+  totalPerfects: number;
+  totalXP: number;
+  roundHistory: RoundRecord[];
+}

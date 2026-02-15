@@ -4,6 +4,7 @@ interface MelodyControlsProps {
   phase: GamePhase;
   isAudioPlaying: boolean;
   replaysUsed: number;
+  maxReplays?: number;
   playedNoteCount: number;
   targetNoteCount: number;
   onPlay: () => void;
@@ -12,10 +13,29 @@ interface MelodyControlsProps {
   onNextRound: () => void;
 }
 
+function Spinner() {
+  return (
+    <svg
+      className="spinner"
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    >
+      <path d="M12 2a10 10 0 0 1 10 10" />
+    </svg>
+  );
+}
+
 export function MelodyControls({
   phase,
   isAudioPlaying,
   replaysUsed,
+  maxReplays = 2,
   playedNoteCount,
   targetNoteCount,
   onPlay,
@@ -24,32 +44,48 @@ export function MelodyControls({
   onNextRound,
 }: MelodyControlsProps) {
   if (phase === 'listening') {
+    const listensRemaining = maxReplays - replaysUsed;
+    const replayDisabled = isAudioPlaying || replaysUsed >= maxReplays;
+    const readyEnabled = !isAudioPlaying && replaysUsed > 0;
+
     return (
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-5">
         <div className="flex items-center gap-4">
+          {/* Play / Replay — secondary action once heard */}
           <button
             onClick={onPlay}
-            disabled={isAudioPlaying}
-            className="px-6 py-3 rounded-xl bg-(--color-accent) hover:bg-(--color-accent-hover) disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-lg transition-colors cursor-pointer flex items-center gap-2"
+            disabled={replayDisabled}
+            className="px-6 py-3 rounded-xl bg-(--color-accent) hover:bg-(--color-accent-hover) disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-lg transition-colors cursor-pointer flex items-center gap-2"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+            {isAudioPlaying ? (
+              <Spinner />
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
             {replaysUsed === 0 ? 'Play Melody' : 'Replay'}
           </button>
 
+          {/* I'm Ready — primary CTA, larger when enabled */}
           <button
             onClick={onReady}
-            disabled={isAudioPlaying || replaysUsed === 0}
-            className="px-6 py-3 rounded-xl bg-(--color-success) hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-lg transition-all cursor-pointer"
+            disabled={!readyEnabled}
+            className={`rounded-xl bg-(--color-success) hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              readyEnabled
+                ? 'px-8 py-4 text-xl shadow-lg shadow-emerald-500/20'
+                : 'px-6 py-3 text-lg'
+            } ${readyEnabled && listensRemaining <= 0 ? 'animate-pulse' : ''}`}
           >
             I&apos;m Ready
           </button>
         </div>
 
         {replaysUsed > 0 && (
-          <p className="text-(--color-text-muted) text-sm">
-            Listened {replaysUsed} {replaysUsed === 1 ? 'time' : 'times'}
+          <p className="text-(--color-text-muted) text-base">
+            {listensRemaining > 0
+              ? `${listensRemaining} ${listensRemaining === 1 ? 'listen' : 'listens'} remaining`
+              : 'No listens remaining'}
           </p>
         )}
       </div>
@@ -59,7 +95,7 @@ export function MelodyControls({
   if (phase === 'counting-in') {
     return (
       <div className="flex flex-col items-center gap-4">
-        <div className="flex items-center gap-3">
+        <div className="status-card flex items-center gap-3">
           <div className="w-3 h-3 rounded-full bg-amber-400 animate-pulse" />
           <span className="text-lg font-medium">Get ready...</span>
         </div>
@@ -69,18 +105,22 @@ export function MelodyControls({
 
   if (phase === 'playing') {
     return (
-      <div className="flex flex-col items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-(--color-error) animate-pulse" />
-          <span className="text-lg font-medium">Play it back!</span>
+      <div className="flex flex-col items-center gap-5">
+        {/* Recording status card */}
+        <div className="status-card flex items-center gap-4">
+          <div className="recording-dot" />
+          <div className="flex flex-col">
+            <span className="text-lg font-semibold">Play it back!</span>
+            <span className="text-(--color-text-muted) text-base tabular-nums">
+              {playedNoteCount} / {targetNoteCount} notes
+            </span>
+          </div>
         </div>
-        <p className="text-(--color-text-muted) text-sm">
-          {playedNoteCount} / {targetNoteCount} notes
-        </p>
+
         <button
           onClick={onDone}
           disabled={playedNoteCount === 0}
-          className="px-6 py-3 rounded-xl bg-(--color-accent) hover:bg-(--color-accent-hover) disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors cursor-pointer"
+          className="px-8 py-4 rounded-xl bg-(--color-accent) hover:bg-(--color-accent-hover) disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold text-xl transition-colors cursor-pointer"
         >
           Done
         </button>
@@ -93,7 +133,7 @@ export function MelodyControls({
       <div className="flex justify-center">
         <button
           onClick={onNextRound}
-          className="px-8 py-3 rounded-xl bg-(--color-accent) hover:bg-(--color-accent-hover) text-white font-semibold text-lg transition-colors cursor-pointer"
+          className="px-8 py-4 rounded-xl bg-(--color-accent) hover:bg-(--color-accent-hover) text-white font-bold text-xl transition-colors cursor-pointer"
         >
           Next Round
         </button>

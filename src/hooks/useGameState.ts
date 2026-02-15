@@ -24,7 +24,7 @@ type GameAction =
   | { type: 'START_PLAYING' }
   | { type: 'ADD_NOTE'; note: PlayedNote }
   | { type: 'FINISH_PLAYING' }
-  | { type: 'NEXT_ROUND'; melody: Melody }
+  | { type: 'NEXT_ROUND' }
   | { type: 'UPDATE_DIFFICULTY'; difficulty: Partial<DifficultyConfig> }
   | { type: 'RESET' };
 
@@ -139,11 +139,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'NEXT_ROUND': {
+      // Generate melody using current difficulty (after any updates)
+      const melody = generateMelody(state.difficulty);
       return {
         ...state,
         round: {
           phase: 'listening',
-          targetMelody: action.melody,
+          targetMelody: melody,
           playedNotes: [],
           comparison: null,
           roundNumber: state.round.roundNumber + 1,
@@ -235,9 +237,8 @@ export function useGameState(): UseGameStateReturn {
   }, []);
 
   const nextRound = useCallback(() => {
-    const melody = generateMelody(state.difficulty);
-    dispatch({ type: 'NEXT_ROUND', melody });
-  }, [state.difficulty]);
+    dispatch({ type: 'NEXT_ROUND' });
+  }, []);
 
   const updateDifficulty = useCallback((config: Partial<DifficultyConfig>) => {
     dispatch({ type: 'UPDATE_DIFFICULTY', difficulty: config });

@@ -32,3 +32,126 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* Streak break shake animation */
+@keyframes streak-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-4px) rotate(-2deg); }
+  30% { transform: translateX(4px) rotate(2deg); }
+  45% { transform: translateX(-3px) rotate(-1deg); }
+  60% { transform: translateX(3px) rotate(1deg); }
+  75% { transform: translateX(-1px); }
+}
+
+.streak-shake {
+  animation: streak-shake 0.6s ease-in-out;
+}
+
+/* Difficulty panel highlight pulse for auto-scaled fields */
+@keyframes highlight-pulse {
+  0% { background-color: transparent; }
+  30% { background-color: rgba(99, 102, 241, 0.25); }
+  100% { background-color: transparent; }
+}
+
+.difficulty-highlight {
+  animation: highlight-pulse 1.5s ease-out;
+  border-radius: 0.375rem;
+}
+
+/* XP tag pop-in */
+@keyframes xp-pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.xp-tag {
+  animation: xp-pop 0.4s ease-out both;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Horizontal scroll container for note displays */
+.note-scroll-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-light) transparent;
+}
+
+.note-scroll-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.note-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.note-scroll-container::-webkit-scrollbar-thumb {
+  background-color: var(--color-surface-light);
+  border-radius: 4px;
+}
+
+/* Scroll fade masks for note display overflow */
+.note-scroll-wrapper {
+  position: relative;
+}
+
+.note-scroll-wrapper::before,
+.note-scroll-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 4px; /* leave room for scrollbar */
+  width: 24px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.note-scroll-wrapper::before {
+  left: 0;
+  background: linear-gradient(to right, var(--color-bg), transparent);
+}
+
+.note-scroll-wrapper::after {
+  right: 0;
+  background: linear-gradient(to left, var(--color-bg), transparent);
+}
+
+.note-scroll-wrapper.can-scroll-left::before,
+.note-scroll-wrapper.can-scroll-right::after {
+  opacity: 1;
+}
+
+/* Status card for recording phase */
+.status-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.25rem;
+}
+
+/* Recording pulse ring */
+@keyframes recording-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+
+.recording-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--color-error);
+  animation: recording-pulse 1.5s ease-in-out infinite;
+}

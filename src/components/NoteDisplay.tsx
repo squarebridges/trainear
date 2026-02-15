@@ -1,3 +1,4 @@
+import { useRef, useEffect, useCallback, useState } from 'react';
 import { midiToNoteName } from '../theory/noteUtils';
 import type { NoteStatus, TimingStatus, MelodyNote } from '../types';
 
@@ -36,7 +37,7 @@ function statusLabel(status: NoteStatus): string | null {
     case 'correct':
       return null;
     case 'wrong':
-      return 'wrong pos';
+      return 'wrong';
     case 'missing':
       return 'missed';
     case 'extra':
@@ -87,6 +88,31 @@ function timingColor(timing: TimingStatus): string {
 }
 
 export function NoteDisplay({ label, notes, marks, timingMarks, rhythmMode = false, hidden = false }: NoteDisplayProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const hasOverflow = el.scrollWidth > el.clientWidth;
+    setCanScrollLeft(hasOverflow && el.scrollLeft > 2);
+    setCanScrollRight(hasOverflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateScrollState, { passive: true });
+    window.addEventListener('resize', updateScrollState);
+    return () => {
+      el.removeEventListener('scroll', updateScrollState);
+      window.removeEventListener('resize', updateScrollState);
+    };
+  }, [notes.length, updateScrollState]);
+
   if (notes.length === 0 && !hidden) {
     return (
       <div className="text-center">
@@ -101,56 +127,65 @@ export function NoteDisplay({ label, notes, marks, timingMarks, rhythmMode = fal
       <p className="text-xs uppercase tracking-wider text-(--color-text-muted) mb-3 text-center">
         {label}
       </p>
-      <div className="flex items-end justify-center gap-2 flex-wrap">
-        {hidden ? (
-          <div className="flex gap-2">
-            {notes.map((note, i) => (
-              <div
-                key={i}
-                className={`${rhythmMode ? durationWidthClass(note.duration) : 'w-14'} h-14 rounded-lg bg-(--color-surface-light) border border-(--color-border) flex items-center justify-center`}
-              >
-                <span className="text-(--color-text-muted) text-lg">?</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          notes.map((note, i) => {
-            const mark = marks?.[i];
-            const timing = timingMarks?.[i];
-            const colorClass = mark
-              ? statusColor(mark)
-              : 'bg-(--color-surface-light) border-(--color-border) text-(--color-text)';
-            const subLabel = mark ? statusLabel(mark) : null;
-            const tLabel = timing ? timingLabel(timing) : null;
-            const widthClass = rhythmMode ? durationWidthClass(note.duration) : 'w-14';
-
-            return (
-              <div key={i} className="flex flex-col items-center gap-1">
+      <div
+        ref={wrapperRef}
+        className={`note-scroll-wrapper ${canScrollLeft ? 'can-scroll-left' : ''} ${canScrollRight ? 'can-scroll-right' : ''}`}
+      >
+        <div
+          ref={scrollRef}
+          className="note-scroll-container flex items-end gap-2 pb-1"
+          style={{ justifyContent: notes.length > 8 ? 'flex-start' : 'center' }}
+        >
+          {hidden ? (
+            <div className="flex gap-2">
+              {notes.map((note, i) => (
                 <div
-                  className={`${widthClass} h-14 rounded-lg border flex flex-col items-center justify-center font-mono font-semibold text-sm transition-all ${colorClass}`}
+                  key={i}
+                  className={`${rhythmMode ? durationWidthClass(note.duration) : 'w-14'} h-14 rounded-lg bg-(--color-surface-light) border border-(--color-border) flex items-center justify-center shrink-0`}
                 >
-                  <span>{midiToNoteName(note.midi)}</span>
+                  <span className="text-(--color-text-muted) text-lg">?</span>
                 </div>
-                {/* Duration label (rhythm mode) */}
-                {rhythmMode && note.duration !== undefined && (
-                  <span className="text-[10px] text-(--color-text-muted)">
-                    {durationLabel(note.duration)}
-                  </span>
-                )}
-                {/* Status label (wrong pos, missed, extra) */}
-                {subLabel && (
-                  <span className="text-[10px] text-(--color-text-muted)">{subLabel}</span>
-                )}
-                {/* Timing label (early, late) */}
-                {tLabel && mark === 'correct' && (
-                  <span className={`text-[10px] font-medium ${timingColor(timing!)}`}>
-                    {tLabel}
-                  </span>
-                )}
-              </div>
-            );
-          })
-        )}
+              ))}
+            </div>
+          ) : (
+            notes.map((note, i) => {
+              const mark = marks?.[i];
+              const timing = timingMarks?.[i];
+              const colorClass = mark
+                ? statusColor(mark)
+                : 'bg-(--color-surface-light) border-(--color-border) text-(--color-text)';
+              const subLabel = mark ? statusLabel(mark) : null;
+              const tLabel = timing ? timingLabel(timing) : null;
+              const widthClass = rhythmMode ? durationWidthClass(note.duration) : 'w-14';
+
+              return (
+                <div key={i} className="flex flex-col items-center gap-1 shrink-0">
+                  <div
+                    className={`${widthClass} h-14 rounded-lg border flex flex-col items-center justify-center font-mono font-semibold text-sm transition-all ${colorClass}`}
+                  >
+                    <span>{midiToNoteName(note.midi)}</span>
+                  </div>
+                  {/* Duration label (rhythm mode) */}
+                  {rhythmMode && note.duration !== undefined && (
+                    <span className="text-[10px] text-(--color-text-muted)">
+                      {durationLabel(note.duration)}
+                    </span>
+                  )}
+                  {/* Status label (wrong, missed, extra) */}
+                  {subLabel && (
+                    <span className="text-[10px] text-(--color-text-muted)">{subLabel}</span>
+                  )}
+                  {/* Timing label (early, late) */}
+                  {tLabel && mark === 'correct' && (
+                    <span className={`text-[10px] font-medium ${timingColor(timing!)}`}>
+                      {tLabel}
+                    </span>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );

@@ -3,12 +3,13 @@ import type { ComparisonResult, NoteStatus, TimingStatus, Melody, PlayedNote } f
 /**
  * Compare played notes against target melody.
  *
- * Pitch scoring uses Longest Common Subsequence (LCS):
- * - Score = (LCS length / target length) * 100
- * - Target notes in the LCS are marked "correct", others "missing"
- * - Played notes in the LCS are marked "correct", others "extra"/"wrong"
+ * Each note is scored individually by position: target[i] vs played[i].
+ * - Correct: same pitch at same position
+ * - Wrong: different pitch at that position
+ * - Missing: no played note at that target position
+ * - Extra: played note beyond target length
  *
- * When rhythm mode is on, timing accuracy is also scored for pitch-matched notes.
+ * When rhythm mode is on, timing accuracy is also scored for correct notes.
  */
 export function compareMelodies(
   target: Melody,
@@ -36,60 +37,31 @@ export function compareMelodies(
     };
   }
 
-  // Build LCS table
-  const m = target.length;
-  const n = played.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () =>
-    Array(n + 1).fill(0),
-  );
-
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (targetMidi[i - 1] === playedMidi[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1] + 1;
-      } else {
-        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
-      }
-    }
-  }
-
-  // Backtrack to find which positions are part of the LCS
-  const targetInLCS = new Set<number>();
-  const playedInLCS = new Set<number>();
-  // Store matched pairs for rhythm scoring: [targetIndex, playedIndex]
+  // Position-by-position comparison
+  const targetMarks: NoteStatus[] = [];
+  const playedMarks: NoteStatus[] = [];
   const matchedPairs: [number, number][] = [];
 
-  let i = m;
-  let j = n;
-  while (i > 0 && j > 0) {
-    if (targetMidi[i - 1] === playedMidi[j - 1]) {
-      targetInLCS.add(i - 1);
-      playedInLCS.add(j - 1);
-      matchedPairs.push([i - 1, j - 1]);
-      i--;
-      j--;
-    } else if (dp[i - 1][j] > dp[i][j - 1]) {
-      i--;
-    } else {
-      j--;
-    }
+  const len = Math.min(target.length, played.length);
+  for (let i = 0; i < len; i++) {
+    const match = targetMidi[i] === playedMidi[i];
+    targetMarks.push(match ? 'correct' : 'wrong');
+    playedMarks.push(match ? 'correct' : 'wrong');
+    if (match) matchedPairs.push([i, i]);
   }
-  matchedPairs.reverse(); // put in forward order
 
-  const lcsLength = dp[m][n];
-  const pitchScore = Math.round((lcsLength / m) * 100);
+  // Remaining target positions (played too short)
+  for (let i = len; i < target.length; i++) {
+    targetMarks.push('missing');
+  }
 
-  // Mark target notes
-  const targetMarks: NoteStatus[] = targetMidi.map((_, idx) =>
-    targetInLCS.has(idx) ? 'correct' : 'missing',
-  );
+  // Remaining played positions (played too long)
+  for (let i = len; i < played.length; i++) {
+    playedMarks.push('extra');
+  }
 
-  // Mark played notes
-  const playedMarks: NoteStatus[] = playedMidi.map((note, idx) => {
-    if (playedInLCS.has(idx)) return 'correct';
-    if (targetMidi.includes(note)) return 'wrong';
-    return 'extra';
-  });
+  const correctCount = matchedPairs.length;
+  const pitchScore = Math.round((correctCount / target.length) * 100);
 
   // If rhythm mode is off, return pitch-only result
   if (!options?.rhythmMode || !options?.tempo) {
