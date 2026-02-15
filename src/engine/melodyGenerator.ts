@@ -90,19 +90,23 @@ function weightedPick(
  * 5. If rhythmMode is on, assign random durations from a weighted pool
  */
 export function generateMelody(config: DifficultyConfig): Melody {
-  // Center range around middle C (MIDI 60), spanning about 1.5 octaves
-  const centerMidi = 60;
-  const lowMidi = centerMidi - 8;  // E3 area
-  const highMidi = centerMidi + 12; // C5 area
+  // Convert octave to MIDI range (1 octave span)
+  // MIDI: C0 = 12, C1 = 24, C2 = 36, C3 = 48, C4 = 60 (middle C), C5 = 72, etc.
+  // Formula: MIDI = (octave + 1) * 12
+  const lowMidi = (config.octave + 1) * 12;
+  const highMidi = lowMidi + 12; // One octave above
 
   const scaleNotes = getScaleNotesInRange(config.key, config.scale, lowMidi, highMidi);
 
   if (scaleNotes.length === 0) {
-    // Fallback: simple C major scale fragment
-    return [60, 62, 64, 65].slice(0, config.noteCount).map((midi) => ({
-      midi,
-      duration: config.rhythmMode ? randomDuration() : undefined,
-    }));
+    // Fallback: simple C major scale fragment in the specified octave
+    const fallbackStart = (config.octave + 1) * 12;
+    return [fallbackStart, fallbackStart + 2, fallbackStart + 4, fallbackStart + 5]
+      .slice(0, config.noteCount)
+      .map((midi) => ({
+        midi,
+        duration: config.rhythmMode ? randomDuration() : undefined,
+      }));
   }
 
   // Get chord-tone pitch classes for this key/scale

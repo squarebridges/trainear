@@ -153,9 +153,23 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'UPDATE_DIFFICULTY': {
+      const newDifficulty = { ...state.difficulty, ...action.difficulty };
+      // If we're in the listening phase and haven't started playing yet, regenerate the melody
+      if (state.round.phase === 'listening' && state.round.playedNotes.length === 0) {
+        const newMelody = generateMelody(newDifficulty);
+        return {
+          ...state,
+          difficulty: newDifficulty,
+          round: {
+            ...state.round,
+            targetMelody: newMelody,
+            replaysUsed: 0, // Reset replays since it's a new melody
+          },
+        };
+      }
       return {
         ...state,
-        difficulty: { ...state.difficulty, ...action.difficulty },
+        difficulty: newDifficulty,
       };
     }
 

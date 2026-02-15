@@ -69,6 +69,8 @@ export interface DifficultyConfig {
   maxInterval: number;
   /** Whether rhythm mode is enabled */
   rhythmMode: boolean;
+  /** Starting octave number (e.g., 4 for octave 4-5) */
+  octave: number;
 }
 
 /** State for a single round */
@@ -89,4 +91,5 @@ export const DEFAULT_DIFFICULTY: DifficultyConfig = {
   tempo: 100,
   maxInterval: 7,
   rhythmMode: false,
+  octave: 4,
 };

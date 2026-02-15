@@ -29,6 +29,25 @@ export function DifficultyPanel({ config, onChange, disabled = false }: Difficul
         </select>
       </div>
 
+      {/* Octave */}
+      <div className="flex items-center gap-2">
+        <label className="text-xs uppercase tracking-wider text-(--color-text-muted)">
+          Octave
+        </label>
+        <select
+          value={config.octave}
+          onChange={(e) => onChange({ octave: Number(e.target.value) })}
+          disabled={disabled}
+          className="bg-(--color-surface-light) text-(--color-text) border border-(--color-border) rounded px-2 py-1 text-sm disabled:opacity-50"
+        >
+          {[2, 3, 4, 5, 6].map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Scale */}
       <div className="flex items-center gap-2">
         <label className="text-xs uppercase tracking-wider text-(--color-text-muted)">
