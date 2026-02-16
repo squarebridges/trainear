@@ -10,12 +10,16 @@ const RHYTHM_POOL: [Duration, number][] = [
 ];
 
 /**
- * Pick a random duration from the weighted pool.
+ * Pick a random duration from the weighted pool, optionally filtered
+ * to only the durations allowed at the current difficulty level.
  */
-function randomDuration(): Duration {
-  const totalWeight = RHYTHM_POOL.reduce((sum, [, w]) => sum + w, 0);
+function randomDuration(allowedDurations?: Duration[]): Duration {
+  const pool = allowedDurations
+    ? RHYTHM_POOL.filter(([dur]) => allowedDurations.includes(dur))
+    : RHYTHM_POOL;
+  const totalWeight = pool.reduce((sum, [, w]) => sum + w, 0);
   let r = Math.random() * totalWeight;
-  for (const [dur, weight] of RHYTHM_POOL) {
+  for (const [dur, weight] of pool) {
     r -= weight;
     if (r <= 0) return dur;
   }
@@ -105,7 +109,7 @@ export function generateMelody(config: DifficultyConfig): Melody {
       .slice(0, config.noteCount)
       .map((midi) => ({
         midi,
-        duration: config.rhythmMode ? randomDuration() : undefined,
+        duration: config.rhythmMode ? randomDuration(config.allowedDurations) : undefined,
       }));
   }
 
@@ -137,7 +141,7 @@ export function generateMelody(config: DifficultyConfig): Melody {
 
   melody.push({
     midi: scaleNotes[currentIndex],
-    duration: config.rhythmMode ? randomDuration() : undefined,
+    duration: config.rhythmMode ? randomDuration(config.allowedDurations) : undefined,
   });
 
   // --- Walk through the melody with weighted selection ---
@@ -187,7 +191,7 @@ export function generateMelody(config: DifficultyConfig): Melody {
 
     melody.push({
       midi: scaleNotes[currentIndex],
-      duration: config.rhythmMode ? randomDuration() : undefined,
+      duration: config.rhythmMode ? randomDuration(config.allowedDurations) : undefined,
     });
   }
 

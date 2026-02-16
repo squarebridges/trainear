@@ -71,6 +71,8 @@ export interface DifficultyConfig {
   rhythmMode: boolean;
   /** Starting octave number (e.g., 4 for octave 4-5) */
   octave: number;
+  /** Which note durations are available (rhythm mode only). Defaults to all. */
+  allowedDurations?: Duration[];
 }
 
 /** State for a single round */

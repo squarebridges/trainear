@@ -1,4 +1,4 @@
-import type { DifficultyConfig } from '../types';
+import type { DifficultyConfig, Duration } from '../types';
 import { AVAILABLE_SCALES, AVAILABLE_KEYS } from '../theory/scales';
 
 interface AutoDifficultyPanelProps {
@@ -67,7 +67,11 @@ export function AutoDifficultyPanel({ config, highlightedFields }: AutoDifficult
         <div className={fieldClass('rhythmMode', highlightedFields)}>
           <label className="text-xs uppercase tracking-wider text-(--color-text-muted)">Rhythm</label>
           <span className={`text-sm ${config.rhythmMode ? 'text-(--color-accent)' : 'text-(--color-text-muted)'}`}>
-            {config.rhythmMode ? 'On' : 'Off'}
+            {config.rhythmMode
+              ? (config.allowedDurations ?? ([0.5, 1, 1.5, 2] as Duration[]))
+                  .map((d) => ({ 0.5: '8th', 1: 'Qtr', 1.5: 'Dot Qtr', 2: 'Half' } as Record<number, string>)[d])
+                  .join(', ')
+              : 'Off'}
           </span>
         </div>
       </div>

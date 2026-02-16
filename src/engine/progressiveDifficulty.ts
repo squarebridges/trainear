@@ -1,4 +1,4 @@
-import type { DifficultyConfig } from '../types';
+import type { DifficultyConfig, Duration } from '../types';
 
 /** A named difficulty level with its required streak and config overrides */
 export interface DifficultyLevel {
@@ -17,11 +17,11 @@ export const DIFFICULTY_LEVELS: DifficultyLevel[] = [
   { level: 1, name: 'Beginner',      streakRequired: 0,  config: { noteCount: 3, maxInterval: 3, rhythmMode: false, tempo: 100 } },
   { level: 2, name: 'Easy',          streakRequired: 3,  config: { noteCount: 4, maxInterval: 5, rhythmMode: false, tempo: 100 } },
   { level: 3, name: 'Moderate',      streakRequired: 6,  config: { noteCount: 4, maxInterval: 7, rhythmMode: false, tempo: 100 } },
-  { level: 4, name: 'Intermediate',  streakRequired: 10, config: { noteCount: 5, maxInterval: 7, rhythmMode: true,  tempo: 100 } },
-  { level: 5, name: 'Challenging',   streakRequired: 15, config: { noteCount: 5, maxInterval: 9, rhythmMode: true,  tempo: 110 } },
-  { level: 6, name: 'Advanced',      streakRequired: 20, config: { noteCount: 6, maxInterval: 9, rhythmMode: true,  tempo: 120 } },
-  { level: 7, name: 'Expert',        streakRequired: 26, config: { noteCount: 7, maxInterval: 12, rhythmMode: true, tempo: 140 } },
-  { level: 8, name: 'Master',        streakRequired: 33, config: { noteCount: 8, maxInterval: 12, rhythmMode: true, tempo: 160 } },
+  { level: 4, name: 'Intermediate',  streakRequired: 10, config: { noteCount: 5, maxInterval: 7, rhythmMode: true,  tempo: 100, allowedDurations: [0.5, 1] } },
+  { level: 5, name: 'Challenging',   streakRequired: 15, config: { noteCount: 5, maxInterval: 9, rhythmMode: true,  tempo: 110, allowedDurations: [0.5, 1, 2] } },
+  { level: 6, name: 'Advanced',      streakRequired: 20, config: { noteCount: 6, maxInterval: 9, rhythmMode: true,  tempo: 120, allowedDurations: [0.5, 1, 1.5, 2] } },
+  { level: 7, name: 'Expert',        streakRequired: 26, config: { noteCount: 7, maxInterval: 12, rhythmMode: true, tempo: 140, allowedDurations: [0.5, 1, 1.5, 2] } },
+  { level: 8, name: 'Master',        streakRequired: 33, config: { noteCount: 8, maxInterval: 12, rhythmMode: true, tempo: 160, allowedDurations: [0.5, 1, 1.5, 2] } },
 ];
 
 /**
@@ -84,7 +84,11 @@ export function describeLevelConfig(level: DifficultyLevel): LevelDescription {
   return {
     notes: `${c.noteCount ?? '?'} notes`,
     maxLeap: INTERVAL_LABELS[c.maxInterval ?? 0] ?? `${c.maxInterval} semitones`,
-    rhythm: c.rhythmMode ? 'On' : 'Off',
+    rhythm: c.rhythmMode
+      ? (c.allowedDurations ?? ([0.5, 1, 1.5, 2] as Duration[]))
+          .map((d) => ({ 0.5: '8th', 1: 'Qtr', 1.5: 'Dot Qtr', 2: 'Half' })[d])
+          .join(', ')
+      : 'Off',
     tempo: `${c.tempo ?? '?'} BPM`,
   };
 }
