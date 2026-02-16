@@ -1,17 +1,24 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
-import { useMidi } from './hooks/useMidi';
-import { useAudio } from './hooks/useAudio';
-import { useGameState } from './hooks/useGameState';
-import { useStats } from './hooks/useStats';
-import { MidiSetup } from './components/MidiSetup';
-import { MelodyControls } from './components/MelodyControls';
-import { NoteDisplay } from './components/NoteDisplay';
-import { ScoreDisplay } from './components/ScoreDisplay';
-import { AutoDifficultyPanel, UserSettingsPanel } from './components/DifficultyPanel';
-import { StreakBadge } from './components/StreakBadge';
-import { StatsPanel } from './components/StatsPanel';
-import { getDifficultyForStreak, getBaseDifficulty, getChangedFields } from './engine/progressiveDifficulty';
-import type { DifficultyConfig, XPBreakdown } from './types';
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AutoDifficultyPanel,
+  UserSettingsPanel,
+} from "./components/DifficultyPanel";
+import { MelodyControls } from "./components/MelodyControls";
+import { MidiSetup } from "./components/MidiSetup";
+import { NoteDisplay } from "./components/NoteDisplay";
+import { ScoreDisplay } from "./components/ScoreDisplay";
+import { StatsPanel } from "./components/StatsPanel";
+import { StreakBadge } from "./components/StreakBadge";
+import {
+  getBaseDifficulty,
+  getChangedFields,
+  getDifficultyForStreak,
+} from "./engine/progressiveDifficulty";
+import { useAudio } from "./hooks/useAudio";
+import { useGameState } from "./hooks/useGameState";
+import { useMidi } from "./hooks/useMidi";
+import { useStats } from "./hooks/useStats";
+import type { DifficultyConfig, XPBreakdown } from "./types";
 
 function App() {
   const midi = useMidi();
@@ -27,7 +34,9 @@ function App() {
   const [lastXP, setLastXP] = useState<XPBreakdown | null>(null);
 
   // Fields highlighted on the difficulty panel after auto-scaling
-  const [highlightedFields, setHighlightedFields] = useState<(keyof DifficultyConfig)[]>([]);
+  const [highlightedFields, setHighlightedFields] = useState<
+    (keyof DifficultyConfig)[]
+  >([]);
 
   // Stats panel visibility
   const [showStats, setShowStats] = useState(false);
@@ -40,17 +49,21 @@ function App() {
 
   // Refs for values used inside the MIDI callback to avoid re-registering on every render
   const phaseRef = useRef(game.phase);
-  phaseRef.current = game.phase;
   const addNoteRef = useRef(game.addNote);
-  addNoteRef.current = game.addNote;
   const playNoteRef = useRef(audio.playNote);
-  playNoteRef.current = audio.playNote;
   const stopNoteRef = useRef(audio.stopNote);
-  stopNoteRef.current = audio.stopNote;
+
+  // Update refs after render
+  useEffect(() => {
+    phaseRef.current = game.phase;
+    addNoteRef.current = game.addNote;
+    playNoteRef.current = audio.playNote;
+    stopNoteRef.current = audio.stopNote;
+  });
 
   // When MIDI connects, transition from setup to listening
   useEffect(() => {
-    if (midi.connected && game.phase === 'setup' && !hasStartedRef.current) {
+    if (midi.connected && game.phase === "setup" && !hasStartedRef.current) {
       hasStartedRef.current = true;
       game.onMidiConnected();
     }
@@ -64,7 +77,7 @@ function App() {
       playNoteRef.current(note, velocity);
 
       // Capture note if in playing phase, with timestamp
-      if (phaseRef.current === 'playing') {
+      if (phaseRef.current === "playing") {
         const time = (performance.now() - recordingStartRef.current) / 1000;
         addNoteRef.current({ midi: note, time });
       }
@@ -83,7 +96,7 @@ function App() {
   // Auto-finish when played note count matches target
   useEffect(() => {
     if (
-      game.phase === 'playing' &&
+      game.phase === "playing" &&
       game.round.playedNotes.length > 0 &&
       game.round.playedNotes.length >= game.round.targetMelody.length
     ) {
@@ -93,23 +106,39 @@ function App() {
       }, 400);
       return () => clearTimeout(timer);
     }
-  }, [game.phase, game.round.playedNotes.length, game.round.targetMelody.length, game.finishPlaying]);
+  }, [
+    game.phase,
+    game.round.playedNotes.length,
+    game.round.targetMelody.length,
+    game.finishPlaying,
+  ]);
 
   // Record stats when entering review phase
   useEffect(() => {
-    if (game.phase === 'review' && game.round.comparison && !hasRecordedRef.current) {
+    if (
+      game.phase === "review" &&
+      game.round.comparison &&
+      !hasRecordedRef.current
+    ) {
       hasRecordedRef.current = true;
       const xp = recordRound(
         game.round.comparison,
         game.difficulty,
         game.round.replaysUsed,
       );
-      setLastXP(xp);
+      // Defer state update to avoid cascading renders
+      queueMicrotask(() => setLastXP(xp));
     }
-    if (game.phase !== 'review') {
+    if (game.phase !== "review") {
       hasRecordedRef.current = false;
     }
-  }, [game.phase, game.round.comparison, game.difficulty, game.round.replaysUsed, recordRound]);
+  }, [
+    game.phase,
+    game.round.comparison,
+    game.difficulty,
+    game.round.replaysUsed,
+    recordRound,
+  ]);
 
   const handlePlayMelody = useCallback(async () => {
     await audio.ensureStarted();
@@ -170,8 +199,8 @@ function App() {
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-(--color-border)">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold tracking-tight">Playback Trainer</h1>
-          {game.phase !== 'setup' && (
+          <h1 className="text-xl font-bold tracking-tight">Trainear</h1>
+          {game.phase !== "setup" && (
             <span className="text-sm text-(--color-text-muted) bg-(--color-surface) px-2 py-0.5 rounded">
               Round {game.round.roundNumber}
             </span>
@@ -185,7 +214,17 @@ function App() {
               className="text-(--color-text-muted) hover:text-(--color-text) transition-colors cursor-pointer p-1"
               title="View stats"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <line x1="18" y1="20" x2="18" y2="10" />
                 <line x1="12" y1="20" x2="12" y2="4" />
                 <line x1="6" y1="20" x2="6" y2="14" />
@@ -208,7 +247,7 @@ function App() {
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-6 max-w-5xl mx-auto w-full">
         {/* Setup phase */}
-        {game.phase === 'setup' && (
+        {game.phase === "setup" && (
           <MidiSetup
             connected={midi.connected}
             deviceName={midi.deviceName}
@@ -220,7 +259,7 @@ function App() {
         )}
 
         {/* Meta row: level + auto params + user settings (side by side) */}
-        {game.phase !== 'setup' && (
+        {game.phase !== "setup" && (
           <div className="flex items-stretch gap-3 w-full">
             <div className="flex-1 min-w-0">
               <StreakBadge
@@ -238,14 +277,16 @@ function App() {
               <UserSettingsPanel
                 config={game.difficulty}
                 onChange={game.updateDifficulty}
-                disabled={game.phase === 'playing' || game.phase === 'counting-in'}
+                disabled={
+                  game.phase === "playing" || game.phase === "counting-in"
+                }
               />
             </div>
           </div>
         )}
 
         {/* Phase indicator — listening */}
-        {game.phase === 'listening' && (
+        {game.phase === "listening" && (
           <div className="text-center px-6 py-3 rounded-xl bg-(--color-surface)/40 border border-(--color-border)/50">
             <p className="text-lg text-(--color-text-muted)">
               Listen to the melody, then play it back
@@ -254,7 +295,7 @@ function App() {
         )}
 
         {/* Score display (review phase) */}
-        {game.phase === 'review' && game.round.comparison && (
+        {game.phase === "review" && game.round.comparison && (
           <ScoreDisplay
             comparison={game.round.comparison}
             replaysUsed={game.round.replaysUsed}
@@ -264,7 +305,7 @@ function App() {
         )}
 
         {/* Controls — above note displays so Next Round appears before target/notes */}
-        {game.phase !== 'setup' && (
+        {game.phase !== "setup" && (
           <MelodyControls
             phase={game.phase}
             isAudioPlaying={audio.isPlaying}
@@ -280,10 +321,10 @@ function App() {
         )}
 
         {/* Note displays */}
-        {game.phase !== 'setup' && (
+        {game.phase !== "setup" && (
           <div className="flex flex-col gap-6 w-full">
             {/* Target melody */}
-            {game.phase === 'review' && (
+            {game.phase === "review" && (
               <NoteDisplay
                 label="Target"
                 notes={game.round.targetMelody}
@@ -294,7 +335,7 @@ function App() {
             )}
 
             {/* Hidden target during listening */}
-            {game.phase === 'listening' && game.round.replaysUsed > 0 && (
+            {game.phase === "listening" && game.round.replaysUsed > 0 && (
               <NoteDisplay
                 label="Target"
                 notes={game.round.targetMelody}
@@ -304,7 +345,7 @@ function App() {
             )}
 
             {/* Played notes */}
-            {(game.phase === 'playing' || game.phase === 'review') && (
+            {(game.phase === "playing" || game.phase === "review") && (
               <NoteDisplay
                 label="Your Notes"
                 notes={game.round.playedNotes.map((pn) => ({ midi: pn.midi }))}
