@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
-import type { SessionStats, RoundRecord, XPBreakdown, DifficultyConfig } from '../types';
+import type { SessionStats, RoundRecord, XPBreakdown, DifficultyConfig, ComparisonResult } from '../types';
 
 const STORAGE_KEY = 'playback-trainer-stats';
 const MAX_HISTORY = 100;
+const RHYTHM_PASS_THRESHOLD = 80;
 
 function getDefaultStats(): SessionStats {
   return {
@@ -35,6 +36,26 @@ function saveStats(stats: SessionStats): void {
 }
 
 /**
+ * Determine if a round passes based on pitch and rhythm thresholds.
+ * - Pitch must be 100%
+ * - Rhythm (when enabled) must be >= 80%
+ */
+function isPerfectRound(comparison: ComparisonResult, rhythmMode: boolean): boolean {
+  // Pitch must always be 100%
+  if (comparison.pitchScore !== 100) {
+    return false;
+  }
+
+  // If rhythm mode is enabled, rhythm score must be >= 80%
+  if (rhythmMode && comparison.rhythmScore !== undefined) {
+    return comparison.rhythmScore >= RHYTHM_PASS_THRESHOLD;
+  }
+
+  // If rhythm mode is off, only pitch matters
+  return true;
+}
+
+/**
  * Compute the XP breakdown for a round.
  */
 export function computeXP(
@@ -42,14 +63,15 @@ export function computeXP(
   replaysUsed: number,
   noteCount: number,
   currentStreak: number,
+  perfect: boolean,
 ): XPBreakdown {
   const baseXP = score;
 
   // +25 if the user nailed it on the first listen
   const noReplayBonus = replaysUsed === 1 ? 25 : 0;
 
-  // +50 for a perfect score
-  const perfectBonus = score === 100 ? 50 : 0;
+  // +50 for a perfect score (100% pitch, 80%+ rhythm)
+  const perfectBonus = perfect ? 50 : 0;
 
   // Streak multiplier (applied to base XP only, before adding flat bonuses)
   let streakMultiplier = 1;
@@ -77,7 +99,7 @@ export function computeXP(
 export interface UseStatsReturn {
   stats: SessionStats;
   /** Record a completed round and return the XP breakdown */
-  recordRound: (score: number, difficulty: DifficultyConfig, replaysUsed: number) => XPBreakdown;
+  recordRound: (comparison: ComparisonResult, difficulty: DifficultyConfig, replaysUsed: number) => XPBreakdown;
   /** Clear all stats */
   resetStats: () => void;
 }
@@ -86,20 +108,20 @@ export function useStats(): UseStatsReturn {
   const [stats, setStats] = useState<SessionStats>(loadStats);
 
   const recordRound = useCallback(
-    (score: number, difficulty: DifficultyConfig, replaysUsed: number): XPBreakdown => {
+    (comparison: ComparisonResult, difficulty: DifficultyConfig, replaysUsed: number): XPBreakdown => {
       let updated: SessionStats = { ...stats };
 
-      const perfect = score === 100;
+      const perfect = isPerfectRound(comparison, difficulty.rhythmMode);
 
       // Update streak before computing XP (so current round's streak counts)
       const newStreak = perfect ? updated.currentStreak + 1 : 0;
 
-      // Compute XP using the new streak value
-      const xp = computeXP(score, replaysUsed, difficulty.noteCount, newStreak);
+      // Compute XP using the new streak value and perfect status
+      const xp = computeXP(comparison.score, replaysUsed, difficulty.noteCount, newStreak, perfect);
 
       const record: RoundRecord = {
         timestamp: Date.now(),
-        score,
+        score: comparison.score,
         noteCount: difficulty.noteCount,
         scale: difficulty.scale,
         key: difficulty.key,

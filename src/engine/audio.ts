@@ -21,51 +21,41 @@ export interface AudioEngine {
   dispose(): void;
 }
 
-/**
- * Convert a duration in beats to a Tone.js duration string.
- */
-function beatsToDuration(beats: number): string {
-  switch (beats) {
-    case 0.5: return '8n';
-    case 1: return '4n';
-    case 1.5: return '4n.';
-    case 2: return '2n';
-    default: return '4n';
-  }
-}
-
 export function createAudioEngine(): AudioEngine {
-  // Synth for real-time note playback (MIDI key feedback)
-  const liveSynth = new Tone.PolySynth(Tone.Synth, {
-    maxPolyphony: 8,
-    voice: Tone.Synth,
-    options: {
-      oscillator: { type: 'triangle8' },
-      envelope: {
-        attack: 0.01,
-        decay: 0.3,
-        sustain: 0.3,
-        release: 0.8,
-      },
-    },
+  // Use Tone.js Salamander Grand Piano samples (high-quality, dry samples)
+  // Sampled every 3rd note across 88 keys - Tone.js will pitch-shift in between
+  const baseUrl = 'https://tonejs.github.io/audio/salamander/';
+  
+  let pianoLoaded = false;
+  let pianoLoadResolve: (() => void) | null = null;
+  const pianoLoadPromise = new Promise<void>((resolve) => {
+    pianoLoadResolve = resolve;
+  });
+  
+  // Generate sample URLs for every 3rd note (A0 to C8, MIDI 21-108)
+  // This is how Salamander samples are organized: minimal pitch-shifting needed
+  const sampleUrls: Record<string, string> = {};
+  const notes = ['C', 'Cs', 'D', 'Ds', 'E', 'F', 'Fs', 'G', 'Gs', 'A', 'As', 'B'];
+  
+  for (let midi = 21; midi <= 108; midi += 3) {
+    const octave = Math.floor((midi - 12) / 12);
+    const note = notes[midi % 12];
+    const noteName = `${note}${octave}`;
+    // Convert to Tone.js format (use # instead of s for sharps)
+    const toneNoteName = noteName.replace('s', '#');
+    sampleUrls[toneNoteName] = `${noteName}.mp3`;
+  }
+  
+  const piano = new Tone.Sampler({
+    urls: sampleUrls,
+    baseUrl,
+    onload: () => {
+      pianoLoaded = true;
+      if (pianoLoadResolve) {
+        pianoLoadResolve();
+      }
+    }
   }).toDestination();
-  liveSynth.volume.value = -6;
-
-  // Separate synth for melody playback so it's distinguishable
-  const melodySynth = new Tone.PolySynth(Tone.Synth, {
-    maxPolyphony: 4,
-    voice: Tone.Synth,
-    options: {
-      oscillator: { type: 'sine' },
-      envelope: {
-        attack: 0.02,
-        decay: 0.2,
-        sustain: 0.5,
-        release: 1.0,
-      },
-    },
-  }).toDestination();
-  melodySynth.volume.value = -3;
 
   // Click synth for metronome count-in
   const clickSynth = new Tone.MembraneSynth({
@@ -88,20 +78,27 @@ export function createAudioEngine(): AudioEngine {
     if (Tone.getContext().state !== 'running') {
       await Tone.start();
     }
+    if (!pianoLoaded) {
+      await pianoLoadPromise;
+      pianoLoaded = true;
+    }
   }
 
   function playNote(midi: number, velocity = 100) {
+    if (!pianoLoaded) return;
     const noteName = midiToNoteName(midi);
-    const vol = (velocity / 127) * 0.8 + 0.2; // normalize velocity to 0.2-1.0
-    liveSynth.triggerAttack(noteName, undefined, vol);
+    const vol = (velocity / 127); // normalize to 0-1
+    piano.triggerAttack(noteName, undefined, vol);
   }
 
   function stopNote(midi: number) {
+    if (!pianoLoaded) return;
     const noteName = midiToNoteName(midi);
-    liveSynth.triggerRelease(noteName);
+    piano.triggerRelease(noteName);
   }
 
-  function playMelody(melody: Melody, tempo: number): Promise<void> {
+  async function playMelody(melody: Melody, tempo: number): Promise<void> {
+    await ensureStarted();
     return new Promise((resolve) => {
       stopMelody();
       melodyPlaying = true;
@@ -118,12 +115,13 @@ export function createAudioEngine(): AudioEngine {
       let beatOffset = 0;
       melody.forEach((note) => {
         const dur = note.duration ?? 1; // default: quarter note
-        const noteDuration = beatsToDuration(dur);
+        const durationSeconds = (dur / tempo) * 60; // beats to seconds
         // Convert beat offset to seconds for scheduling
         const timeInSeconds = (beatOffset / tempo) * 60;
         const eventId = transport.schedule((t) => {
+          if (!pianoLoaded) return;
           const noteName = midiToNoteName(note.midi);
-          melodySynth.triggerAttackRelease(noteName, noteDuration, t, 0.9);
+          piano.triggerAttackRelease(noteName, durationSeconds, t, 0.9);
         }, timeInSeconds);
         scheduledEvents.push(eventId);
         beatOffset += dur;
@@ -180,7 +178,7 @@ export function createAudioEngine(): AudioEngine {
     transport.cancel();
     scheduledEvents = [];
     melodyPlaying = false;
-    melodySynth.releaseAll();
+    piano.releaseAll();
   }
 
   function isPlaying() {
@@ -189,8 +187,7 @@ export function createAudioEngine(): AudioEngine {
 
   function dispose() {
     stopMelody();
-    liveSynth.dispose();
-    melodySynth.dispose();
+    piano.dispose();
     clickSynth.dispose();
   }
 

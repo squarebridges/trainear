@@ -100,7 +100,7 @@ function App() {
     if (game.phase === 'review' && game.round.comparison && !hasRecordedRef.current) {
       hasRecordedRef.current = true;
       const xp = recordRound(
-        game.round.comparison.score,
+        game.round.comparison,
         game.difficulty,
         game.round.replaysUsed,
       );
@@ -263,6 +263,22 @@ function App() {
           />
         )}
 
+        {/* Controls — above note displays so Next Round appears before target/notes */}
+        {game.phase !== 'setup' && (
+          <MelodyControls
+            phase={game.phase}
+            isAudioPlaying={audio.isPlaying}
+            replaysUsed={game.round.replaysUsed}
+            maxReplays={2}
+            playedNoteCount={game.round.playedNotes.length}
+            targetNoteCount={game.round.targetMelody.length}
+            onPlay={handlePlayMelody}
+            onReady={handleReady}
+            onDone={game.finishPlaying}
+            onNextRound={handleNextRound}
+          />
+        )}
+
         {/* Note displays */}
         {game.phase !== 'setup' && (
           <div className="flex flex-col gap-6 w-full">
@@ -297,22 +313,6 @@ function App() {
               />
             )}
           </div>
-        )}
-
-        {/* Controls */}
-        {game.phase !== 'setup' && (
-          <MelodyControls
-            phase={game.phase}
-            isAudioPlaying={audio.isPlaying}
-            replaysUsed={game.round.replaysUsed}
-            maxReplays={2}
-            playedNoteCount={game.round.playedNotes.length}
-            targetNoteCount={game.round.targetMelody.length}
-            onPlay={handlePlayMelody}
-            onReady={handleReady}
-            onDone={game.finishPlaying}
-            onNextRound={handleNextRound}
-          />
         )}
       </main>
 
