@@ -22,7 +22,7 @@ A web-based ear training app that helps musicians improve their melodic memory a
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/trainear.git
+git clone https://github.com/squarebridges/trainear.git
 cd trainear
 
 # Install dependencies
