@@ -65,6 +65,7 @@ export function MelodyControls({
               </svg>
             )}
             {replaysUsed === 0 ? 'Play Melody' : 'Replay'}
+            <kbd className="ml-1.5 text-xs opacity-60 bg-white/15 px-1.5 py-0.5 rounded font-mono">P</kbd>
           </button>
 
           {/* I'm Ready — primary CTA, larger when enabled */}
@@ -78,6 +79,7 @@ export function MelodyControls({
             } ${readyEnabled && listensRemaining <= 0 ? 'animate-pulse' : ''}`}
           >
             I&apos;m Ready
+            <kbd className="ml-1.5 text-xs opacity-60 bg-white/15 px-1.5 py-0.5 rounded font-mono">R</kbd>
           </button>
         </div>
 
@@ -136,6 +138,7 @@ export function MelodyControls({
           className="px-8 py-4 rounded-xl bg-(--color-accent) hover:bg-(--color-accent-hover) text-white font-bold text-xl transition-colors cursor-pointer"
         >
           Next Round
+          <kbd className="ml-1.5 text-xs opacity-60 bg-white/15 px-1.5 py-0.5 rounded font-mono">N</kbd>
         </button>
       </div>
     );

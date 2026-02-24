@@ -194,6 +194,29 @@ function App() {
     game.nextRound();
   }, [audio, game, stats.currentStreak]);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.repeat) return;
+
+      const key = e.key.toLowerCase();
+
+      if (key === 'p' && game.phase === 'listening' && !audio.isPlaying && game.round.replaysUsed < 2) {
+        e.preventDefault();
+        handlePlayMelody();
+      } else if (key === 'r' && game.phase === 'listening' && !audio.isPlaying && game.round.replaysUsed > 0) {
+        e.preventDefault();
+        handleReady();
+      } else if (key === 'n' && game.phase === 'review') {
+        e.preventDefault();
+        handleNextRound();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [game.phase, game.round.replaysUsed, audio.isPlaying, handlePlayMelody, handleReady, handleNextRound]);
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
