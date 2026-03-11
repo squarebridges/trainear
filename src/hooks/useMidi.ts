@@ -14,10 +14,10 @@ export interface UseMidiReturn {
   selectDevice: (deviceId: string) => void;
   /** Initialize MIDI connection */
   connect: () => Promise<void>;
-  /** Register a callback for note-on events */
-  onNoteOn: (cb: (note: number, velocity: number) => void) => () => void;
-  /** Register a callback for note-off events */
-  onNoteOff: (cb: (note: number) => void) => () => void;
+  /** Register a callback for note-on events (channel is 1-indexed, 1–16) */
+  onNoteOn: (cb: (note: number, velocity: number, channel: number) => void) => () => void;
+  /** Register a callback for note-off events (channel is 1-indexed, 1–16) */
+  onNoteOff: (cb: (note: number, channel: number) => void) => () => void;
   /** Error message if MIDI connection failed */
   error: string | null;
 }
@@ -82,11 +82,11 @@ export function useMidi(): UseMidiReturn {
     engineRef.current!.selectDevice(deviceId);
   }, []);
 
-  const onNoteOn = useCallback((cb: (note: number, velocity: number) => void) => {
+  const onNoteOn = useCallback((cb: (note: number, velocity: number, channel: number) => void) => {
     return engineRef.current!.onNoteOn(cb);
   }, []);
 
-  const onNoteOff = useCallback((cb: (note: number) => void) => {
+  const onNoteOff = useCallback((cb: (note: number, channel: number) => void) => {
     return engineRef.current!.onNoteOff(cb);
   }, []);
 

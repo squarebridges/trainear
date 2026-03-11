@@ -47,11 +47,24 @@ function App() {
   // Ref to track whether we've already recorded this review phase
   const hasRecordedRef = useRef(false);
 
+  // MIDI drum-pad → shortcut mapping (channel 10, GM drum notes)
+  // Pad 52 = Play/Replay (P), Pad 53 = Ready (R), Pad 55 = Next Round (N)
+  const drumPadShortcuts = useRef<Record<number, 'play' | 'ready' | 'next'>>({
+    52: 'play',
+    53: 'ready',
+    55: 'next',
+  });
+
   // Refs for values used inside the MIDI callback to avoid re-registering on every render
   const phaseRef = useRef(game.phase);
   const addNoteRef = useRef(game.addNote);
   const playNoteRef = useRef(audio.playNote);
   const stopNoteRef = useRef(audio.stopNote);
+  const isPlayingRef = useRef(audio.isPlaying);
+  const replaysUsedRef = useRef(game.round.replaysUsed);
+  const handlePlayRef = useRef<() => void>(() => {});
+  const handleReadyRef = useRef<() => void>(() => {});
+  const handleNextRef = useRef<() => void>(() => {});
 
   // Update refs after render
   useEffect(() => {
@@ -59,6 +72,11 @@ function App() {
     addNoteRef.current = game.addNote;
     playNoteRef.current = audio.playNote;
     stopNoteRef.current = audio.stopNote;
+    isPlayingRef.current = audio.isPlaying;
+    replaysUsedRef.current = game.round.replaysUsed;
+    handlePlayRef.current = handlePlayMelody;
+    handleReadyRef.current = handleReady;
+    handleNextRef.current = handleNextRound;
   });
 
   // When MIDI connects, transition from setup to listening
@@ -70,13 +88,30 @@ function App() {
   }, [midi.connected, game.phase, game.onMidiConnected]);
 
   // Register MIDI note-on handler for live audio feedback + note capture
-  // Uses refs so this effect only runs once
+  // Channel 10 drum pad hits are routed to shortcut actions instead
   useEffect(() => {
-    const unsub = midi.onNoteOn((note, velocity) => {
-      // Always play the sound for real-time feedback
+    const unsub = midi.onNoteOn((note, velocity, channel) => {
+      // Drum pad shortcut: channel 10 notes mapped to game actions
+      if (channel === 10) {
+        const action = drumPadShortcuts.current[note];
+        if (!action) return;
+
+        const phase = phaseRef.current;
+        const playing = isPlayingRef.current;
+        const replays = replaysUsedRef.current;
+
+        if (action === 'play' && phase === 'listening' && !playing && replays < 2) {
+          handlePlayRef.current();
+        } else if (action === 'ready' && phase === 'listening' && !playing && replays > 0) {
+          handleReadyRef.current();
+        } else if (action === 'next' && phase === 'review') {
+          handleNextRef.current();
+        }
+        return;
+      }
+
       playNoteRef.current(note, velocity);
 
-      // Capture note if in playing phase, with timestamp
       if (phaseRef.current === "playing") {
         const time = (performance.now() - recordingStartRef.current) / 1000;
         addNoteRef.current({ midi: note, time });
@@ -87,7 +122,8 @@ function App() {
 
   // Register MIDI note-off handler to release sustained notes
   useEffect(() => {
-    const unsub = midi.onNoteOff((note) => {
+    const unsub = midi.onNoteOff((note, channel) => {
+      if (channel === 10) return;
       stopNoteRef.current(note);
     });
     return unsub;

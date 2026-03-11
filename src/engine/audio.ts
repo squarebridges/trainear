@@ -136,7 +136,7 @@ export function createAudioEngine(): AudioEngine {
       }, endTimeInSeconds);
       scheduledEvents.push(endId);
 
-      transport.start();
+      transport.start("+0.05");
     });
   }
 

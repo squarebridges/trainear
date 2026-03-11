@@ -1,5 +1,5 @@
-export type NoteOnCallback = (note: number, velocity: number) => void;
-export type NoteOffCallback = (note: number) => void;
+export type NoteOnCallback = (note: number, velocity: number, channel: number) => void;
+export type NoteOffCallback = (note: number, channel: number) => void;
 export type ConnectionCallback = (connected: boolean, deviceName: string | null) => void;
 
 export interface MidiEngine {
@@ -41,15 +41,14 @@ export function createMidiEngine(): MidiEngine {
     if (!data || data.length < 3) return;
 
     const status = data[0] & 0xf0;
+    const channel = (data[0] & 0x0f) + 1; // 1-indexed (1–16)
     const note = data[1];
     const velocity = data[2];
 
     if (status === 0x90 && velocity > 0) {
-      // Note On
-      noteOnCallbacks.forEach((cb) => cb(note, velocity));
+      noteOnCallbacks.forEach((cb) => cb(note, velocity, channel));
     } else if (status === 0x80 || (status === 0x90 && velocity === 0)) {
-      // Note Off
-      noteOffCallbacks.forEach((cb) => cb(note));
+      noteOffCallbacks.forEach((cb) => cb(note, channel));
     }
   }
 
